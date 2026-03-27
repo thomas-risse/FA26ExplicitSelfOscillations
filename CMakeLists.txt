@@ -3,8 +3,6 @@ project(FA2026)
 
 # Set the directories
 set(AUDIO_PROCESSORS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/engine)
-set(UTILITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/utility)
-set(DSP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp)
 
 # Find required packages
 find_package(Eigen3 REQUIRED NO_MODULE)
