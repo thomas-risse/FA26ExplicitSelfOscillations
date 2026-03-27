@@ -96,6 +96,8 @@ int main(int argc, char const* argv[]) {
   // Write results
 
   storage.writeMatrix("foldDisplacement", foldDisplacement);
+  Eigen::VectorXd restPositions = proc.getRestPositions();
+  storage.writeVector("restPositions", restPositions);
   storage.writeVector("supGlottalFlow", supGlottalFlow);
   storage.writeVector("meanGlottalFlow", meanGlottalFlow);
   storage.writeVector("pressureDrop", pressureDrop);

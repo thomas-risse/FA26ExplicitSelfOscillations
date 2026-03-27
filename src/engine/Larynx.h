@@ -95,6 +95,8 @@ class Larynx {
     return q(idxNow, Eigen::all);
   };
 
+  inline Eigen::Vector<ftype, 3> getRestPositions() { return restPositions; };
+
   // Power variables
   std::tuple<ftype, ftype, ftype> getCurrentDissipatedPowers() {
     return {Pdiss, PdissFlow, PdissFolds};

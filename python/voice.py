@@ -39,6 +39,7 @@ subprocess.run(
 # Get Results
 with h5py.File(fname, "r") as f:
     q = f["foldDisplacement"][:]
+    restPositions = f["restPositions"][:]
     supGlottalFlow = f["supGlottalFlow"][:]
     meanGlottalFlow = f["meanGlottalFlow"][:]
     pressureDrop = f["pressureDrop"][:]
@@ -56,12 +57,13 @@ with h5py.File(fname, "r") as f:
     Pstored = f["Pstored"][:]
 
 # Plots
-fig = plt.figure(figsize=set_size(width='FA', height_ratio=1))
 tmin = 0
 tmax = 0.05
 idxmin = int(tmin * sr)
 idxmax = int(tmax * sr)
 
+# Powers
+fig = plt.figure(figsize=set_size(width='FA', height_ratio=1))
 
 plt.plot(time[idxmin:idxmax], Pstored[idxmin: idxmax], label="Stored")
 
@@ -74,8 +76,6 @@ plt.plot(time[idxmin:idxmax], Pdiss[idxmin: idxmax], label="Dissipated")
 # plt.plot(time[idxmin:idxmax], PdissFolds[idxmin: idxmax], label = "Folds")
 
 
-# plt.plot( -(qfolds[:10000, :] - h0s) * 100)
-
 plt.xlabel("Time (s)")
 plt.ylabel("Power (W)")
 plt.legend()
@@ -84,4 +84,25 @@ plt.grid()
 
 plt.tight_layout()
 fig.savefig("/Users/risse/Projects/NonlinearDissipations/FA2026/assets/Voice_powers.pdf",
+            bbox_inches="tight")
+
+# Masses displacements
+fig = plt.figure(figsize=set_size(width='FA', height_ratio=1))
+
+plt.plot(time[idxmin:idxmax], restPositions[0] -
+         q[idxmin: idxmax, 0], label="Lower")
+plt.plot(time[idxmin:idxmax], restPositions[1] -
+         q[idxmin: idxmax, 1], label="Upper")
+plt.plot(time[idxmin:idxmax], restPositions[2] -
+         q[idxmin: idxmax, 2], label="Body")
+
+
+plt.xlabel("Time (s)")
+plt.ylabel("Displacement (m)")
+plt.legend()
+plt.grid()
+
+
+plt.tight_layout()
+fig.savefig("/Users/risse/Projects/NonlinearDissipations/FA2026/assets/Voice_displacements.pdf",
             bbox_inches="tight")
