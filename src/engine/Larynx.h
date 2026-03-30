@@ -40,7 +40,8 @@ class Larynx {
   Eigen::Matrix<ftype, 4, 3> elongationMatrix;
   Eigen::DiagonalMatrix<ftype, 3> massMatrixInv;
   Eigen::Matrix<ftype, 3, 3> stiffnessMatrix, dissipationMatrix;
-  Eigen::Vector<ftype, 3> massesInterpenetrations, areasBelowMasses;
+  Eigen::Vector<ftype, 3> massesInterpenetrations, areasBelowMasses,
+      smoothedIsOpened;
   Eigen::Vector<ftype, 3> effectiveSurfacesPsub, effectiveSurfacesPsup;
 
   Eigen::Vector<ftype, 3> gSav{0, 0, 0}, Fnl{0, 0, 0};
@@ -59,12 +60,14 @@ class Larynx {
   Eigen::Matrix<ftype, 3, 2> UWoodburry;
   Eigen::Matrix<ftype, 2, 2> woodburryInverse;
 
+  ftype epsilonSmooth{1e-5};
+
   // State
   Eigen::Matrix<ftype, 2, 3> p, q;
   Eigen::Vector<ftype, 2> r;
   std::size_t idxNow{0}, idxNext{1};
 
-  Eigen::Vector<ftype, 2> Psub;
+  Eigen::Vector<ftype, 2> Psub, PsubCentered;
   ftype Psup;
 
   // Power variables
@@ -92,7 +95,13 @@ class Larynx {
   void process(float Pin);
 
   inline Eigen::Vector<ftype, 3> getCurrentFoldDisplacement() {
-    return q(idxNow, Eigen::all);
+    // Midpoint to evaluate on the same grid as inputs and momentums.
+    return (q(idxNow, Eigen::all) + q(idxNext, Eigen::all)) * 0.5;
+  };
+
+  inline Eigen::Vector<ftype, 3> getCurrentEffectiveOpening() {
+    // Midpoint to evaluate on the same grid as inputs and momentums.
+    return areasBelowMasses;
   };
 
   inline Eigen::Vector<ftype, 3> getRestPositions() { return restPositions; };

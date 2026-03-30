@@ -40,6 +40,8 @@ int main(int argc, char const* argv[]) {
   // Storage
   Eigen::MatrixXd foldDisplacement
       = Eigen::MatrixXd::Zero(static_cast<int>(sr * simDuration), 3);
+  Eigen::MatrixXd effectiveOpening
+      = Eigen::MatrixXd::Zero(static_cast<int>(sr * simDuration), 3);
   Eigen::VectorXd supGlottalFlow
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
   Eigen::VectorXd meanGlottalFlow
@@ -75,11 +77,16 @@ int main(int argc, char const* argv[]) {
   // Simulation
   auto start = high_resolution_clock::now();
   for (int i = 0; i < sr * simDuration; i++) {
-    proc.process(Pmouth(i));
+    if (i + 1 < sr * simDuration) {
+      proc.process(Pmouth(i + 1));
+    } else {
+      proc.process(Pmouth(i));  // Duplicate last input for simplicity
+    }
     foldDisplacement.row(i) = proc.getCurrentFoldDisplacement();
     supGlottalFlow(i) = proc.getCurrentSupGlottalFlow();
     meanGlottalFlow(i) = proc.getCurrentMeanGlottalFlow();
     pressureDrop(i) = proc.getCurrentPressureDrop();
+    effectiveOpening.row(i) = proc.getCurrentEffectiveOpening();
 
     std::tie(Pext(i), PextSub(i), PextSup(i))
         = proc.getCurrentExchangedPowers();
@@ -97,6 +104,7 @@ int main(int argc, char const* argv[]) {
   // Write results
 
   storage.writeMatrix("foldDisplacement", foldDisplacement);
+  storage.writeMatrix("effectiveOpening", effectiveOpening);
   Eigen::VectorXd restPositions = proc.getRestPositions();
   storage.writeVector("restPositions", restPositions);
   storage.writeVector("supGlottalFlow", supGlottalFlow);

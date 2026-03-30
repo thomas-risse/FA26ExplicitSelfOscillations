@@ -36,6 +36,7 @@ Larynx<ftype>::Larynx(float samplerate) {
   p.setZero();
   q.setZero();
   r.setZero();
+  PsubCentered.setZero();
   Psub.setZero();
 
   kineticEnergy.setZero();
@@ -45,13 +46,16 @@ Larynx<ftype>::Larynx(float samplerate) {
 template <typename ftype>
 void Larynx<ftype>::fillMassesInterpenetrationsAndAreas() {
   massesInterpenetrations = q(idxNext, Eigen::all).transpose() - restPositions;
-  areasBelowMasses
-      = -1
-        * widths.cwiseProduct(
-            massesInterpenetrations);  // 2 Comes from symmetric configuration
 
-  massesInterpenetrations = massesInterpenetrations.cwiseMax(0);
-  areasBelowMasses = areasBelowMasses.cwiseMax(0);
+  areasBelowMasses = widths.cwiseProduct(
+      softplusMatrix(-massesInterpenetrations,
+                     epsilonSmooth));  // 2 Comes from symmetric configuration
+  smoothedIsOpened
+      = (-(massesInterpenetrations / epsilonSmooth).array().tanh().matrix()
+         + Eigen::Vector<ftype, 3>::Ones())
+        / 2;
+  massesInterpenetrations
+      = softplusMatrix(massesInterpenetrations, epsilonSmooth);
 }
 
 template <typename ftype>
@@ -60,17 +64,14 @@ void Larynx<ftype>::computeEffectiveAreas() {
   effectiveSurfacesPsub.setZero();
   effectiveSurfacesPsup.setZero();
   if (Aratio > 1) {
-    effectiveSurfacesPsup = widths.cwiseProduct(lengths).cwiseProduct(
-        (areasBelowMasses.array() > 0)
-            .select(Eigen::Vector<ftype, 3>::Constant(1),
-                    Eigen::Vector<ftype, 3>::Constant(0)));
+    effectiveSurfacesPsup
+        = widths.cwiseProduct(lengths).cwiseProduct(smoothedIsOpened);
   } else {
     effectiveSurfacesPsub(0) = widths(0) * lengths(0) * (1 - Aratio * Aratio)
-                               * (areasBelowMasses(0) > 0);
-    effectiveSurfacesPsup(0) = widths(0) * lengths(0) * (Aratio * Aratio)
-                               * (areasBelowMasses(0) > 0);
-    effectiveSurfacesPsup(1)
-        = widths(1) * lengths(1) * (areasBelowMasses(1) > 0);
+                               * (smoothedIsOpened(0));
+    effectiveSurfacesPsup(0)
+        = widths(0) * lengths(0) * (Aratio * Aratio) * (smoothedIsOpened(0));
+    effectiveSurfacesPsup(1) = widths(1) * lengths(1) * (smoothedIsOpened(1));
   }
 }
 
@@ -138,8 +139,9 @@ void Larynx<ftype>::process(float Pin) {
   idxNow = idxNext;
   idxNext = (idxNow + 1) % 2;
 
-  Psub(idxNext) = Pin;
-
+  PsubCentered(idxNext) = Pin;  // P^{n+1}
+  Psub(idxNext)
+      = (PsubCentered(idxNext) + PsubCentered(idxNow)) * 0.5;  // P^{n+1/2}
   // Step 1: q update
   q(idxNext, Eigen::all)
       = q(idxNow, Eigen::all).transpose()

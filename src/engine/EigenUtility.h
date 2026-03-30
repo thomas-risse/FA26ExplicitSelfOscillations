@@ -3,6 +3,21 @@
 
 #include <Eigen/Dense>
 
+template <typename derived, typename ftype>
+auto smoothRampMatrix(const Eigen::MatrixBase<derived>& x, ftype epsilon = 1) {
+  const auto t = ((x.array()) / (epsilon)).cwiseMax(0).cwiseMin(1);
+  return (x.array() > epsilon)
+      .select(x.array(), (-t * t * t + 2 * t * t) * epsilon)
+      .matrix();
+}
+
+template <typename derived, typename ftype>
+auto softplusMatrix(const Eigen::MatrixBase<derived>& x, ftype epsilon = 1,
+                    ftype threshold = 40) {
+  return ((x / epsilon).array() > threshold)
+      .select(x, (x / epsilon).array().exp().log1p().matrix() * epsilon);
+}
+
 template <typename Derived, typename ftype>
 auto ClipEigen(Eigen::Ref<const Eigen::ArrayX<Derived>> array, const ftype& min,
                const ftype& max) {
