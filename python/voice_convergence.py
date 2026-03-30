@@ -21,7 +21,7 @@ duration = 0.1  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
 Nsrs = 8
-idx_plot = Nsrs - 1  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
+idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
 tmin, tmax = 0.00, 0.1
@@ -88,6 +88,7 @@ if not path.exists(result_folder):
 # ──────────────────────────────────────────────────────────────────────────────
 # Reference simulation (highest sample rate)
 # ──────────────────────────────────────────────────────────────────────────────
+
 res_plot = 0
 # Sample rates to test (Hz)
 sample_rates = sr0 * np.pow(2, np.arange(Nsrs))
@@ -100,6 +101,7 @@ q_ref = ref["q"]                      # shape (N_ref, 3)
 q_ref = q_ref[::int(sr_ref / sr0)]
 if (idx_plot == Nsrs - 1):
     res_plot = ref
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Convergence study
 # ──────────────────────────────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ for i, sr in enumerate(sample_rates[:-1]):
     q_cur_resampled = q_cur_window[::int(sr/sr0)]
 
     diff = q_cur_resampled - q_ref_window
-    l2_errors.append(l2_norm(diff) / l2_norm(q_ref_window**2))
+    l2_errors.append(l2_norm(diff) / l2_norm(q_ref_window))
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Convergence plot
@@ -146,7 +148,6 @@ for order, ls in [(1, "--")]:
 
 ax_conv.set_xlabel("Sample rate (Hz)")
 ax_conv.set_ylabel(r"$\| q - q_{\mathrm{ref}} \|_{L_2}$ (m)")
-ax_conv.set_title("Convergence of vocal-fold displacement w.r.t. sample rate")
 ax_conv.legend(frameon=True)
 ax_conv.grid(which="both", ls=":")
 plt.tight_layout()
