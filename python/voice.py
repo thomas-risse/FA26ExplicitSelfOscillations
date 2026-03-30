@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,7 +19,6 @@ duration = 1
 t = np.linspace(0, duration, int(sr * duration))
 
 # Excitation
-t = np.arange(int(duration * sr)) / sr
 Pin0 = 800
 trise = 0.001
 tdecay = 0
@@ -57,13 +57,14 @@ with h5py.File(fname, "r") as f:
     Pstored = f["Pstored"][:]
 
 # Plots
-tmin = 0
+tmin = 0.03
 tmax = 0.05
 idxmin = int(tmin * sr)
 idxmax = int(tmax * sr)
 
-# Powers
-fig = plt.figure(figsize=set_size(width='FA', height_ratio=1))
+# Powers$
+
+fig = plt.figure(figsize=set_size(width='FA', height_ratio=0.7))
 
 plt.plot(time[idxmin:idxmax], Pstored[idxmin: idxmax], label="Stored")
 
@@ -75,10 +76,11 @@ plt.plot(time[idxmin:idxmax], Pdiss[idxmin: idxmax], label="Dissipated")
 # plt.plot(time[idxmin:idxmax], PdissFlow[idxmin: idxmax], label = "Flow")
 # plt.plot(time[idxmin:idxmax], PdissFolds[idxmin: idxmax], label = "Folds")
 
+plt.xlim([tmin, tmax])
 
 plt.xlabel("Time (s)")
 plt.ylabel("Power (W)")
-plt.legend()
+plt.legend(frameon=True, loc=1)
 plt.grid()
 
 
@@ -86,23 +88,49 @@ plt.tight_layout()
 fig.savefig("/Users/risse/Projects/NonlinearDissipations/FA2026/assets/Voice_powers.pdf",
             bbox_inches="tight")
 
-# Masses displacements
-fig = plt.figure(figsize=set_size(width='FA', height_ratio=1))
+# Masses displacements and glottal flow
+fig, axs = plt.subplots(figsize=set_size(
+    width='FA', height_ratio=0.5, subplots=(2, 1)), nrows=2, ncols=1, sharex=True, height_ratios=[1, 0.5])
 
-plt.plot(time[idxmin:idxmax], restPositions[0] -
-         q[idxmin: idxmax, 0], label="Lower")
-plt.plot(time[idxmin:idxmax], restPositions[1] -
-         q[idxmin: idxmax, 1], label="Upper")
-plt.plot(time[idxmin:idxmax], restPositions[2] -
-         q[idxmin: idxmax, 2], label="Body")
+plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+axs[0].plot(time[idxmin:idxmax], (restPositions[0] -
+                                  q[idxmin: idxmax, 0]) * 1000, label="Lower", ls="--")
+axs[0].plot(time[idxmin:idxmax], (restPositions[1] -
+                                  q[idxmin: idxmax, 1]) * 1000, label="Upper", ls="-")
+axs[0].plot(time[idxmin:idxmax], (restPositions[2] -
+                                  q[idxmin: idxmax, 2]) * 1000, label="Body", ls=":")
+axlims = axs[0].get_ylim()
+axs[0].axhspan(-1, 0, alpha=0.3, color="grey")
+axs[0].set_ylim(axlims)
 
 
+axs[1].plot(time, supGlottalFlow, color="red")
+# axs[1].plot(time, meanGlottalFlow)
+
+
+plt.xlim([tmin, tmax])
 plt.xlabel("Time (s)")
-plt.ylabel("Displacement (m)")
-plt.legend()
-plt.grid()
+axs[0].set_ylabel("Opening\n(mm)",
+                  multialignment="center")
+axs[1].set_ylabel("Flow\n(m$^3.$s$^{-1}$)", multialignment="center")
+axs[0].legend(frameon=True, loc=1)
+fig.align_ylabels()
 
+for ax in axs:
+    ax.grid()
 
 plt.tight_layout()
+fig.subplots_adjust(hspace=0.25)
+
 fig.savefig("/Users/risse/Projects/NonlinearDissipations/FA2026/assets/Voice_displacements.pdf",
             bbox_inches="tight")
+
+# If export to json is wanted for some reason
+# f = h5py.File('results/testVoice.hdf5', 'r')
+# out = {
+#     'time': f['time'][:].tolist(),
+#     'foldDisplacement': f['foldDisplacement'][:].tolist(),
+#     'meanGlottalFlow': f['meanGlottalFlow'][:].tolist(),
+# }
+# with open('voiceData.json', 'w') as fp:
+#     json.dump(out, fp)

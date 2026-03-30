@@ -9,8 +9,8 @@ tex_fonts = {
     "text.usetex": True,
     "font.family": "serif",
     # Use 12pt font in plots, to match 12pt font in document
-    "axes.labelsize": 11,
-    "font.size": 11,
+    "axes.labelsize": 10,
+    "font.size": 10,
     # Make the legend/label fonts a little smaller
     "legend.fontsize": 8,
     "xtick.labelsize": 8,

@@ -72,6 +72,7 @@ int main(int argc, char const* argv[]) {
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
   time.setLinSpaced(0, simDuration);
 
+  // Simulation
   auto start = high_resolution_clock::now();
   for (int i = 0; i < sr * simDuration; i++) {
     proc.process(Pmouth(i));
