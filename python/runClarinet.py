@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,19 +12,19 @@ from helper_plots import set_size
 # General setting
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Input sub-glottal pressure ramp
-PsubMax = 800  # Pa
-trise = 0.001  # s
+# Input mouth pressure ramp
+PsubMax = 2000  # Pa
+trise = 0.005  # s
 
 # Numerical setting
-duration = 0.1  # s
+duration = 1  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
-Nsrs = 8
+Nsrs = 2
 idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
-tmin, tmax = 0.00, 0.1
+tmin, tmax = 0.6, 1
 
 # Directories
 result_folder = "results"  # Simulation results
@@ -51,7 +52,7 @@ def run_simulation(sr: int, duration: float, fname: str) -> dict:
         f["Pmouth"] = Pin
 
     subprocess.run(
-        ["../build/RunLarynx", f"{path.realpath(fname)}"],
+        ["../build/RunSingleReed", f"{path.realpath(fname)}"],
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -59,18 +60,17 @@ def run_simulation(sr: int, duration: float, fname: str) -> dict:
 
     with h5py.File(fname, "r") as f:
         return {
-            "q":               f["foldDisplacement"][:],       # (N, 3)
-            "restPositions":   f["restPositions"][:],
-            "supGlottalFlow":  f["supGlottalFlow"][:],
-            "meanGlottalFlow": f["meanGlottalFlow"][:],
-            "pressureDrop":    f["pressureDrop"][:],
+            "q":               f["reedDisplacement"][:],
+            "layPosition":     f.attrs["layPosition"],
+            "resonatorFlow":   f["resonatorFlow"][:],
+            "meanFlow":        f["meanFlow"][:],
             "time":            f["time"][:],
             "Pext":            f["Pext"][:],
             "PextSub":         f["PextSub"][:],
             "PextSup":         f["PextSup"][:],
             "Pdiss":           f["Pdiss"][:],
             "PdissFlow":       f["PdissFlow"][:],
-            "PdissFolds":      f["PdissFolds"][:],
+            "PdissReed":       f["PdissReed"][:],
             "Pstored":         f["Pstored"][:],
         }
 
@@ -94,7 +94,7 @@ sample_rates = sr0 * np.pow(2, np.arange(Nsrs))
 sr_ref = sample_rates[-1]
 
 print(f"Running reference simulation at sr = {sr_ref} Hz …")
-fname_ref = path.join(result_folder, "testVoice_ref.hdf5")
+fname_ref = path.join(result_folder, "testSingleReed_ref.hdf5")
 ref = run_simulation(sr_ref, duration, fname_ref)
 q_ref = ref["q"]                      # shape (N_ref, 3)
 q_ref = q_ref[::int(sr_ref / sr0)]
@@ -109,7 +109,7 @@ l2_errors = []
 
 for i, sr in enumerate(sample_rates[:-1]):
     print(f"  Running simulation at sr = {sr} Hz …")
-    fname = path.join(result_folder, f"testVoice_{sr}.hdf5")
+    fname = path.join(result_folder, f"testSingleReed_{sr}.hdf5")
     res = run_simulation(sr, duration, fname)
     if (i == idx_plot):
         res_plot = res
@@ -151,7 +151,7 @@ ax_conv.legend(frameon=True)
 ax_conv.grid(which="both", ls=":")
 plt.tight_layout()
 fig_conv.savefig(
-    path.join(figure_folder, "Voice_convergence.pdf"),
+    path.join(figure_folder, "Single_Reed_convergence.pdf"),
     bbox_inches="tight",
 )
 print("Convergence plot saved.")
@@ -163,16 +163,15 @@ print("Convergence plot saved.")
 sr = sample_rates[idx_plot]
 time = res_plot["time"]
 q = res_plot["q"]
-restPositions = res_plot["restPositions"]
-supGlottalFlow = res_plot["supGlottalFlow"]
-meanGlottalFlow = res_plot["meanGlottalFlow"]
-pressureDrop = res_plot["pressureDrop"]
+layPosition = res_plot["layPosition"]
+resonatorFlow = res_plot["resonatorFlow"]
+meanFlow = res_plot["meanFlow"]
 Pext = res_plot["Pext"]
 PextSub = res_plot["PextSub"]
 PextSup = res_plot["PextSup"]
 Pdiss = res_plot["Pdiss"]
 PdissFlow = res_plot["PdissFlow"]
-PdissFolds = res_plot["PdissFolds"]
+PdissReed = res_plot["PdissReed"]
 Pstored = res_plot["Pstored"]
 
 idxmin = int(tmin * sr)
@@ -192,7 +191,7 @@ plt.legend(frameon=True, loc=1)
 plt.grid()
 plt.tight_layout()
 fig.savefig(
-    path.join(figure_folder, "Voice_powers.pdf"),
+    path.join(figure_folder, "Single_Reed_powers.pdf"),
     bbox_inches="tight",
 )
 print("\n")
@@ -207,16 +206,12 @@ fig2, axs = plt.subplots(
 
 plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
 axs[0].plot(time[idxmin:idxmax],
-            (restPositions[0] - q[idxmin:idxmax, 0]) * 1000, label="Lower", ls="--")
-axs[0].plot(time[idxmin:idxmax],
-            (restPositions[1] - q[idxmin:idxmax, 1]) * 1000, label="Upper", ls="-")
-axs[0].plot(time[idxmin:idxmax],
-            (restPositions[2] - q[idxmin:idxmax, 2]) * 1000, label="Body",  ls=":")
+            (layPosition - q[idxmin:idxmax]) * 1000, label="Lower", ls="--")
 axlims = axs[0].get_ylim()
 axs[0].axhspan(-1, 0, alpha=0.3, color="grey")
 axs[0].set_ylim(axlims)
 
-axs[1].plot(time, supGlottalFlow, color="red")
+axs[1].plot(time, resonatorFlow, color="red")
 
 plt.xlim([tmin, tmax])
 plt.xlabel("Time (s)")
@@ -231,7 +226,7 @@ for ax in axs:
 plt.tight_layout()
 fig2.subplots_adjust(hspace=0.25)
 fig2.savefig(
-    path.join(figure_folder, "Voice_displacement.pdf"),
+    path.join(figure_folder, "Single_Reed_displacement.pdf"),
     bbox_inches="tight",
 )
 

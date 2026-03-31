@@ -101,6 +101,8 @@ void Larynx<ftype>::computegSAV() {
                   + pow(massesInterpenetrations(1), alphaContactStiffness + 1))
                / (alphaContactStiffness + 1);  // Contact
 
+  // Fnl should be modified to include the derivative of the smoothing function
+  // here
   Fnl = etaStiffness * elongationMatrix.transpose()
         * (stiffnesses.diagonal().array() * elongations.array()
            * elongations.array() * elongations.array())

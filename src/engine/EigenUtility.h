@@ -11,6 +11,25 @@ auto smoothRampMatrix(const Eigen::MatrixBase<derived>& x, ftype epsilon = 1) {
       .matrix();
 }
 
+template <typename ftype>
+ftype softplus(const ftype& x, ftype epsilon = 1, ftype threshold = 40) {
+  if (x / epsilon > threshold) {
+    return x;
+  } else {
+    return epsilon * log1p(exp(x / epsilon));
+  }
+}
+
+template <typename ftype>
+ftype softplusDerivative(const ftype& x, ftype epsilon = 1,
+                         ftype threshold = 40) {
+  if (x / epsilon > threshold) {
+    return 1;
+  } else {
+    return exp(x / epsilon) / (1 + exp(x / epsilon));
+  }
+}
+
 template <typename derived, typename ftype>
 auto softplusMatrix(const Eigen::MatrixBase<derived>& x, ftype epsilon = 1,
                     ftype threshold = 40) {
