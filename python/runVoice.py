@@ -196,6 +196,9 @@ fig.savefig(
     path.join(figure_folder, "Voice_powers.pdf"),
     bbox_inches="tight",
 )
+print("\n")
+print(f"Power balance mean relative error for fs={sr}:", "{0:0.2E}".format(l2_norm(
+    Pstored + Pext + Pdiss) / l2_norm(Pdiss)))
 
 # Masses displacements and glottal flow
 fig2, axs = plt.subplots(
