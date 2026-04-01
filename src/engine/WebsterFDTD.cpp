@@ -200,22 +200,6 @@ void WebsterFDTD<ftype>::updateCoefficients() {
 
 template <typename ftype>
 void WebsterFDTD<ftype>::process(ftype inputFlow) {
-  if (m_timeVaryingGeometry) {
-    // Apply filtering to each element of SdirectTarget
-    for (int i = 0; i < m_SdirectTarget.size() && i < m_numLPF; i++) {
-      m_Sdirect[i] = static_cast<ftype>(
-          m_lpfFilters[i].process(static_cast<double>(m_SdirectTarget[i])));
-      // Sdirect[i] = SdirectTarget[i];
-    }
-
-    computeDisS();
-    updateWallParameters();
-    updateRadiationParameters();
-    updateCoefficients();
-
-    m_dtSp = (m_Sp - m_SpLast) / m_dt;
-  }
-
   if (m_yieldingWalls) {
     m_dplusv.setZero();
     m_dplusv.head(m_Ndis - 1) = m_Ctop * m_v;
@@ -257,15 +241,35 @@ void WebsterFDTD<ftype>::process(ftype inputFlow) {
   m_SdirectLast = m_Sdirect;
   m_SdLast = m_Sd;
   m_SpLast = m_Sp;
+
+  if (m_timeVaryingGeometry) {
+    // Apply filtering to each element of SdirectTarget
+    for (int i = 0; i < m_SdirectTarget.size() && i < m_numLPF; i++) {
+      m_Sdirect[i] = static_cast<ftype>(
+          m_lpfFilters[i].process(static_cast<double>(m_SdirectTarget[i])));
+      // Sdirect[i] = SdirectTarget[i];
+    }
+
+    computeDisS();
+    updateWallParameters();
+    updateRadiationParameters();
+    updateCoefficients();
+
+    m_dtSp = (m_Sp - m_SpLast) / m_dt;
+  }
 }
 
 template <typename ftype>
 std::tuple<ftype, ftype>
 WebsterFDTD<ftype>::getInputLinearDependencyCoefficients() {
-  return {m_c0 * m_c0
-              * (m_rhonow(0)
-                 - m_dt * m_rho0 / (2 * m_h) * m_Sd(0) / m_Sp(0) * m_v(0)),
-          m_c0 * m_c0 * m_dt * m_rho0 / (2 * m_h * m_Sp(0))};
+  return {
+      m_c0 * m_c0 * 0.5
+          * (m_rhonow(0)
+             + 1 / m_A(0)
+                   * (m_B(0) * m_rhonow(0)
+                      - m_dt * m_rho0 / (2 * m_h) * m_Sd(0) / m_Sp(0) * m_v(0)
+                      - m_rho0 * (1 / m_Sp(0) * m_dtSp(0)))),
+      0.5 * m_c0 * m_c0 * (1 / m_A(0)) * m_G(0)};
 }
 
 // LPF filter methods implementation
