@@ -35,6 +35,8 @@ build/
 # Results
 *.hdf5
 *.pdf
+python/figures/
+python/results/
 
 # General
 .DS_Store
