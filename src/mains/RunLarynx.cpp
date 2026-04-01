@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "Articulation.h"
 #include "Larynx.h"
 #include "ResultsStorage.h"
 
@@ -31,7 +32,9 @@ int main(int argc, char const* argv[]) {
   Larynx<double> proc(sr);
   proc.getResonator()->setLength(17e-2);
   proc.getResonator()->setConstantSection(25e-4);
-
+  Articulation art;
+  art.setFromVowel(vowels::o);
+  proc.getResonator()->setSTargetFromArticulation(art);
   // Run a simulation
   Eigen::VectorXd Pmouth
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
@@ -47,6 +50,9 @@ int main(int argc, char const* argv[]) {
   Eigen::VectorXd meanGlottalFlow
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
   Eigen::VectorXd pressureDrop
+      = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
+
+  Eigen::VectorXd radiatedPressure
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
 
   Eigen::VectorXd PextSub
@@ -94,6 +100,8 @@ int main(int argc, char const* argv[]) {
         = proc.getCurrentDissipatedPowers();
     std::tie(Pstored(i), PstoredKinetic(i), PstoredPotential(i))
         = proc.getCurrentStoredPowers();
+
+    radiatedPressure(i) = proc.getRadiatedPressure();
   }
   auto stop = high_resolution_clock::now();
   float rtRatio = (duration_cast<microseconds>(stop - start)).count() * 1e-6
@@ -110,6 +118,7 @@ int main(int argc, char const* argv[]) {
   storage.writeVector("supGlottalFlow", supGlottalFlow);
   storage.writeVector("meanGlottalFlow", meanGlottalFlow);
   storage.writeVector("pressureDrop", pressureDrop);
+  storage.writeVector("radiatedPressure", radiatedPressure);
 
   storage.writeVector("Pext", Pext);
   storage.writeVector("PextSub", PextSub);

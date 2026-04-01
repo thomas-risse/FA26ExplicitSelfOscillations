@@ -3,11 +3,12 @@
 #include <iostream>
 
 template <typename ftype>
-Larynx<ftype>::Larynx(float samplerate) {
+Larynx<ftype>::Larynx(float samplerate, bool yieldingWalls) {
   sr = samplerate;
   dt = 1 / sr;
 
   resonator = std::make_shared<WebsterFDTD<ftype>>(sr);
+  resonator->setYieldingWalls(yieldingWalls);
 
   A0_inv = dt;
   massMatrixInv = masses.inverse();
@@ -31,8 +32,6 @@ Larynx<ftype>::Larynx(float samplerate) {
   dissipationMatrix = elongationMatrix.transpose() * dissipationCoefficients
                       * elongationMatrix;
 
-  std::cout << masses.diagonal() << std::endl;
-
   p.setZero();
   q.setZero();
   r.setZero();
@@ -54,6 +53,8 @@ void Larynx<ftype>::fillMassesInterpenetrationsAndAreas() {
       = (-(massesInterpenetrations / epsilonSmooth).array().tanh().matrix()
          + Eigen::Vector<ftype, 3>::Ones())
         / 2;
+  massesInterpenetrationsDerivatives
+      = softplusDerivativeMatrix(massesInterpenetrations, epsilonSmooth);
   massesInterpenetrations
       = softplusMatrix(massesInterpenetrations, epsilonSmooth);
 }
@@ -110,11 +111,13 @@ void Larynx<ftype>::computegSAV() {
   Fnl(0) += contactStiffness
             * (etaContactStiffness
                    * pow(massesInterpenetrations(0), alphaContactStiffness)
-               + massesInterpenetrations(0));
+               + massesInterpenetrations(0))
+            * massesInterpenetrationsDerivatives(0);
   Fnl(1) += contactStiffness
             * (etaContactStiffness
                    * pow(massesInterpenetrations(1), alphaContactStiffness)
-               + massesInterpenetrations(1));
+               + massesInterpenetrations(1))
+            * massesInterpenetrationsDerivatives(1);
 
   gSav = Fnl / (sqrt(2 * Enl) + 1e-14);
 }
