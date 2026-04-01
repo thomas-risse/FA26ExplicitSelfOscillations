@@ -1,6 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.io.wavfile import write
 
 import h5py
 import subprocess
@@ -14,21 +15,22 @@ from helper_plots import set_size
 
 # Input mouth pressure ramp
 PsubMax = 2000  # Pa
-trise = 0.005  # s
+trise = 0.01  # s
 
 # Numerical setting
-duration = 1  # s
+duration = 0.1  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
-Nsrs = 2
+Nsrs = 6
 idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
-tmin, tmax = 0.6, 1
+tmin, tmax = 0., 0.1
 
 # Directories
 result_folder = "results"  # Simulation results
-figure_folder = "figures"  # Figure export
+figure_folder = "figure"  # Figure export
+fig_width = 'FA'  # In inches, or "FA" for linewidth of Forum Acusticum template
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Functions
@@ -72,6 +74,10 @@ def run_simulation(sr: int, duration: float, fname: str) -> dict:
             "PdissFlow":       f["PdissFlow"][:],
             "PdissReed":       f["PdissReed"][:],
             "Pstored":         f["Pstored"][:],
+            "PstoredKinetic":         f["PstoredKinetic"][:],
+            "PstoredPotential":         f["PstoredPotential"][:],
+            "pressureDrop":         f["pressureDrop"][:],
+            "radiatedPressure":         f["radiatedPressure"][:],
         }
 
 
@@ -134,7 +140,7 @@ for i, sr in enumerate(sample_rates[:-1]):
 # ──────────────────────────────────────────────────────────────────────────────
 
 fig_conv, ax_conv = plt.subplots(
-    figsize=set_size(width='FA', height_ratio=1))
+    figsize=set_size(width=fig_width, height_ratio=1))
 
 ax_conv.loglog(sample_rates[:-1], l2_errors, "o-")
 
@@ -151,7 +157,7 @@ ax_conv.legend(frameon=True)
 ax_conv.grid(which="both", ls=":")
 plt.tight_layout()
 fig_conv.savefig(
-    path.join(figure_folder, "Single_Reed_convergence.pdf"),
+    path.join(figure_folder, "Single_Reed_convergence.png"),
     bbox_inches="tight",
 )
 print("Convergence plot saved.")
@@ -173,16 +179,41 @@ Pdiss = res_plot["Pdiss"]
 PdissFlow = res_plot["PdissFlow"]
 PdissReed = res_plot["PdissReed"]
 Pstored = res_plot["Pstored"]
+PstoredKinetic = res_plot["PstoredKinetic"]
+PstoredPotential = res_plot["PstoredPotential"]
+radiatedPressure = res_plot["radiatedPressure"][::int(sr / sr0)]
+
+write(path.join(result_folder, "clarinet.wav"), sr0,
+      radiatedPressure / np.max(np.abs(radiatedPressure)))
 
 idxmin = int(tmin * sr)
 idxmax = int(tmax * sr)
 
 # Powers
-fig = plt.figure(figsize=set_size(width='FA', height_ratio=0.7))
+fig = plt.figure(figsize=set_size(width=fig_width, height_ratio=0.7))
 
-plt.plot(time[idxmin:idxmax], Pstored[idxmin:idxmax], label="Stored")
-plt.plot(time[idxmin:idxmax], Pext[idxmin:idxmax],    label="External")
-plt.plot(time[idxmin:idxmax], Pdiss[idxmin:idxmax],   label="Dissipated")
+linestyles = ["-", "--", "-."]
+
+plt.plot(time[idxmin:idxmax], Pstored[idxmin:idxmax],
+         label="Stored", color="blue", ls=linestyles[0])
+# plt.plot(time[idxmin:idxmax], PstoredKinetic[idxmin:idxmax],
+#          label="Stored, kinetic", color="blue", ls=linestyles[1])
+# plt.plot(time[idxmin:idxmax], PstoredPotential[idxmin:idxmax],
+#          label="Stored, potential", color="blue", ls=linestyles[2])
+
+plt.plot(time[idxmin:idxmax], Pext[idxmin:idxmax],
+         label="External", color="red", ls=linestyles[0])
+# plt.plot(time[idxmin:idxmax], PextSub[idxmin:idxmax],
+#          label="External, mouth", color="red", ls=linestyles[1])
+# plt.plot(time[idxmin:idxmax], PextSup[idxmin:idxmax],
+#          label="External, resonator", color="red", ls=linestyles[2])
+
+plt.plot(time[idxmin:idxmax], Pdiss[idxmin:idxmax],
+         label="Dissipated", color="green", ls=linestyles[0])
+# plt.plot(time[idxmin:idxmax], PdissFlow[idxmin:idxmax],
+#          label="Dissipated, flow jet", color="green", ls=linestyles[1])
+# plt.plot(time[idxmin:idxmax], PdissReed[idxmin:idxmax],
+#          label="Dissipated, mechanical", color="green", ls=linestyles[2])
 
 plt.xlim([tmin, tmax])
 plt.xlabel("Time (s)")
@@ -191,7 +222,7 @@ plt.legend(frameon=True, loc=1)
 plt.grid()
 plt.tight_layout()
 fig.savefig(
-    path.join(figure_folder, "Single_Reed_powers.pdf"),
+    path.join(figure_folder, "Single_Reed_powers.png"),
     bbox_inches="tight",
 )
 print("\n")
@@ -200,24 +231,29 @@ print(f"Power balance mean relative error for fs={sr}:", "{0:0.2E}".format(l2_no
 
 # Masses displacements and glottal flow
 fig2, axs = plt.subplots(
-    figsize=set_size(width='FA', height_ratio=0.5, subplots=(2, 1)),
-    nrows=2, ncols=1, sharex=True, height_ratios=[1, 0.5],
+    figsize=set_size(width=fig_width, height_ratio=0.5, subplots=(2, 1)),
+    nrows=2, ncols=1, sharex=True, height_ratios=[1, 1],
 )
 
 plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
 axs[0].plot(time[idxmin:idxmax],
             (layPosition - q[idxmin:idxmax]) * 1000, label="Lower", ls="--")
+# axs[0].plot(time[idxmin:idxmax],
+#             (layPosition - q_ref[idxmin:idxmax]) * 1000, label="Lower", ls="-.")
 axlims = axs[0].get_ylim()
 axs[0].axhspan(-1, 0, alpha=0.3, color="grey")
 axs[0].set_ylim(axlims)
 
-axs[1].plot(time, resonatorFlow, color="red")
+axs[1].plot(time, resonatorFlow, color="red", label="Total")
+axs[1].plot(time, meanFlow, color="green", ls="--", label="Pressure-induced")
+axs[1].plot(time, resonatorFlow - meanFlow,
+            color="blue", ls="-.", label="Reed-induced")
 
 plt.xlim([tmin, tmax])
 plt.xlabel("Time (s)")
 axs[0].set_ylabel("Opening\n(mm)",           multialignment="center")
 axs[1].set_ylabel("Flow\n(m$^3.$s$^{-1}$)",  multialignment="center")
-axs[0].legend(frameon=True, loc=1)
+axs[1].legend(frameon=True, loc=1)
 fig2.align_ylabels()
 
 for ax in axs:
@@ -226,7 +262,7 @@ for ax in axs:
 plt.tight_layout()
 fig2.subplots_adjust(hspace=0.25)
 fig2.savefig(
-    path.join(figure_folder, "Single_Reed_displacement.pdf"),
+    path.join(figure_folder, "Single_Reed_displacement.png"),
     bbox_inches="tight",
 )
 

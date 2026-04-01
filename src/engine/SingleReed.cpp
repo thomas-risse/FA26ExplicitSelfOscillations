@@ -33,10 +33,16 @@ void SingleReed<ftype>::fillOpeningAndInterpenetration() {
 
 template <typename ftype>
 void SingleReed<ftype>::computeRk() {
-  meanFlow = opening * sqrt(2 / (kt * rho_0) * abs(Psub(idxNow) - Psup))
-             * sgn(Psub(idxNow) - Psup);
+  // Here the pressure drop is evaluated with a full timestep of lag: i.e. at
+  // timestep n-1/2. Some kind of evaluation of Psup at timestep n, r better
+  // timestep n+1/2 nees to be used for better results.
+  meanFlow
+      = opening * sqrt(2 / (kt * rho_0) * abs(Psub(idxNow) - Psup))
+        * tanh(
+            (Psub(idxNow) - Psup)
+            / epsilonSmoothP);  // Some kind of smoothing of the sign function
   Rk = meanFlow
-       / (Psub(idxNow) - Psup + std::copysign(1e-14, Psub(idxNow) - Psup));
+       / (Psub(idxNow) - Psup + std::copysign(1e-10, Psub(idxNow) - Psup));
 }
 
 template <typename ftype>
@@ -103,10 +109,8 @@ void SingleReed<ftype>::process(float Pin) {
   // Step 6: Resonator update
   Psup = C0 + C1 * p(idxNext);
   resonatorFlow = (Psup - aResonator) / bResonator;
-  // resonatorFlow
-  //     = Rk * (Psub(idxNext) - Psup)
-  //       + 0.5 * effectiveSurfacesPsup.transpose() * massMatrixInv
-  //             * (p(idxNow, Eigen::all) + p(idxNext, Eigen::all)).transpose();
+  // resonatorFlow = Rk * (Psub(idxNext) - Psup)
+  //                 + 0.5 * surface / mass * (p(idxNow) + p(idxNext));
   resonator->process(resonatorFlow);
 
   // Optional computations needed for power balance variables

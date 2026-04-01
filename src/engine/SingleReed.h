@@ -36,7 +36,7 @@ class SingleReed {
 
   ftype RHS;
 
-  ftype epsilonSmooth{1e-7};
+  ftype epsilonSmooth{1e-7}, epsilonSmoothP{1};
 
   // State
   Eigen::Vector<ftype, 2> p, q, r;
@@ -77,6 +77,10 @@ class SingleReed {
     // Midpoint to evaluate on the same grid as inputs and momentums.
     return opening;
   };
+
+  inline ftype getRadiatedPressure() {
+    return resonator->getRadiatedPressure();
+  }
 
   inline ftype getLayPosition() { return layPosition; };
 

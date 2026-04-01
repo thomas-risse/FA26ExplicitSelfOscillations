@@ -9,3 +9,37 @@ This repo contains example code for the three simplified cases presented in the 
 
 ## Structure 
 The repo contain two main folder `/python` containing the python code used to generate figures from the C++ code in `src`.
+
+
+## Some simulation results
+
+Examples of simulation results obtained using the provided C++ code and python scripts are given here for the three studied systems.
+
+### Bowed string
+
+
+### Single-reed instrument
+
+The single reed instrument is composed of a mouthpiece flow model, connected to a single degree of freedom reed mechanical model and to an acoustic resonator (here a straight tube of circular section with $1$ cm radius and $66$ cm length, also including a first order radiation model).
+
+A first simulation is made with the mouth pressure being set to $2000$ Pa (corresponding to a non-beating case). After the initial transient, the system settles to a periodic state. The following figure shows the opening (distance between the reed and the mouthpiece) and the flow going into the resonator as functions of time. The flow is also decomposed in two component: one induced by the pressure gradient and the other induced by the reed velocity.
+
+<img src="medias/Single_Reed_displacement_2000Pa.png" alt="drawing"/>
+
+The corresponding power balance, viewed from the mouthpiece components looks like:
+
+<img src="medias/Single_Reed_powers_2000Pa.png" alt="drawing">
+
+The algorithm converges to a solution with the sampling frequency, at order 1 (error computed on the first $0.1$s of simulation).
+
+<img src="medias/Single_Reed_convergence_2000Pa.png" alt="drawing">
+
+If the mouth pressure is increased to $2500$ Pa, the reed is beating against the lay. SAV handles the contact potential. However, this case yields unsatisfying results (not converging) due to the original SAV method not handling correctly the stiff contact law (auxiliary variable drift). Modifications bases on sign constraint of the auxiliary variable should be used here but are not implemented in this code.
+
+<img src="medias/Single_Reed_displacement_2500Pa.png" alt="drawing"/>
+
+The power balance, viewed from the mouthpiece components looks like is nonetheless preserved:
+<img src="medias/Single_Reed_powers_2500Pa.png" alt="drawing">
+
+### Voice
+

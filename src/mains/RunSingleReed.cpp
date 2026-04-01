@@ -46,6 +46,11 @@ int main(int argc, char const* argv[]) {
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
   Eigen::VectorXd resonatorFlow
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
+  Eigen::VectorXd pressureDrop
+      = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
+
+  Eigen::VectorXd radiatedPressure
+      = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
 
   Eigen::VectorXd PextSub
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
@@ -84,6 +89,7 @@ int main(int argc, char const* argv[]) {
     meanFlow(i) = proc.getCurrentMeanFlow();
     resonatorFlow(i) = proc.getCurrentResonatorFlow();
     effectiveOpening(i) = proc.getCurrentEffectiveOpening();
+    pressureDrop(i) = proc.getCurrentPressureDrop();
 
     std::tie(Pext(i), PextSub(i), PextSup(i))
         = proc.getCurrentExchangedPowers();
@@ -91,6 +97,8 @@ int main(int argc, char const* argv[]) {
         = proc.getCurrentDissipatedPowers();
     std::tie(Pstored(i), PstoredKinetic(i), PstoredPotential(i))
         = proc.getCurrentStoredPowers();
+
+    radiatedPressure(i) = proc.getRadiatedPressure();
   }
   auto stop = high_resolution_clock::now();
   float rtRatio = (duration_cast<microseconds>(stop - start)).count() * 1e-6
@@ -106,6 +114,8 @@ int main(int argc, char const* argv[]) {
   storage.writeAttribute("layPosition", proc.getLayPosition());
   storage.writeVector("meanFlow", meanFlow);
   storage.writeVector("resonatorFlow", resonatorFlow);
+  storage.writeVector("pressureDrop", pressureDrop);
+  storage.writeVector("radiatedPressure", radiatedPressure);
 
   storage.writeVector("Pext", Pext);
   storage.writeVector("PextSub", PextSub);

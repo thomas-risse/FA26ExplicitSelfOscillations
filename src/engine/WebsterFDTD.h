@@ -88,6 +88,9 @@ class WebsterFDTD {
   inline ftype getWallSurfaceMass() { return m_mwA; }
   inline ftype getWallSurfaceDamping() { return m_bwA; }
   inline ftype getInputPressure() { return m_c0 * m_c0 * m_rhonow(0); }
+  inline ftype getRadiatedPressure() {
+    return m_c0 * m_c0 * m_rhonow(m_Ndis - 1);
+  }
 
   // Setters
   inline void setYieldingWalls(bool isYielding) {
