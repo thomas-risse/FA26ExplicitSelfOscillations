@@ -17,6 +17,9 @@ Examples of simulation results obtained using the provided C++ code and python s
 
 ### Bowed string
 
+The bowed string simulations are run for a linear string here. The string is discretized using a modal method.
+
+
 
 ### Single-reed instrument
 
