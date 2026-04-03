@@ -34,7 +34,7 @@ The algorithm converges to a solution with the sampling frequency, at order 1 (e
 
 <img src="medias/Single_Reed_convergence_2000Pa.png" alt="drawing">
 
-If the mouth pressure is increased to $2500$ Pa, the reed is beating against the lay. SAV handles the contact potential. However, this case yields unsatisfying results (not converging) due to the original SAV method not handling correctly the stiff contact law (auxiliary variable drift). Modifications bases on sign constraint of the auxiliary variable should be used here but are not implemented in this code.
+If the mouth pressure is increased to $2500$ Pa, the reed is beating against the lay. SAV handles the contact potential. However, this case yields unsatisfying results (not converging) due to the original SAV method not handling correctly the stiff contact law (auxiliary variable drift). Modifications bases on sign constraint of the auxiliary variable (see [van Walstijn et al., 2024](https://www.sciencedirect.com/science/article/pii/S0022460X23004170)) should be used here but are not implemented in this code.
 
 <img src="medias/Single_Reed_displacement_2500Pa.png" alt="drawing"/>
 
