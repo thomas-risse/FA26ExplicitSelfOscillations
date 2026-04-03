@@ -262,14 +262,13 @@ void WebsterFDTD<ftype>::process(ftype inputFlow) {
 template <typename ftype>
 std::tuple<ftype, ftype>
 WebsterFDTD<ftype>::getInputLinearDependencyCoefficients() {
-  return {
-      m_c0 * m_c0 * 0.5
-          * (m_rhonow(0)
-             + 1 / m_A(0)
-                   * (m_B(0) * m_rhonow(0)
-                      - m_dt * m_rho0 / (2 * m_h) * m_Sd(0) / m_Sp(0) * m_v(0)
-                      - m_rho0 * (1 / m_Sp(0) * m_dtSp(0)))),
-      0.5 * m_c0 * m_c0 * (1 / m_A(0)) * m_G(0)};
+  return {m_c0 * m_c0 * 0.5
+              * (m_rhonow(0)
+                 + 1 / m_A(0)
+                       * (m_B(0) * m_rhonow(0)
+                          - m_rho0 / (m_h)*m_Sd(0) / m_Sp(0) * m_v(0)
+                          - m_rho0 * (1 / m_Sp(0) * m_dtSp(0)))),
+          0.5 * m_c0 * m_c0 * (1 / m_A(0)) * m_G(0)};
 }
 
 // LPF filter methods implementation

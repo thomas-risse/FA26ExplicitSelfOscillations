@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
@@ -29,7 +28,7 @@ tmin, tmax = 0., 0.1
 
 # Directories
 result_folder = "results"  # Simulation results
-figure_folder = "figure"  # Figure export
+figure_folder = "figures"  # Figure export
 fig_width = 'FA'  # In inches, or "FA" for linewidth of Forum Acusticum template
 
 # ──────────────────────────────────────────────────────────────────────────────

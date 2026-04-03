@@ -120,6 +120,38 @@ void Larynx<ftype>::computegSAV() {
             * massesInterpenetrationsDerivatives(1);
 
   gSav = Fnl / (sqrt(2 * Enl) + 1e-14);
+
+  if (controlTerm) {
+    elongations
+        = elongationMatrix * 0.5
+          * (q(idxNext, Eigen::all) + q(idxNow, Eigen::all)).transpose();
+
+    massesInterpenetrations = softplusMatrix(
+        0.5 * (q(idxNext, Eigen::all) + q(idxNow, Eigen::all)).transpose()
+            - restPositions,
+        epsilonSmooth);
+
+    Enl = 0.25 * etaStiffness
+          * (stiffnesses.diagonal().array() * elongations.array()
+             * elongations.array() * elongations.array() * elongations.array())
+                .sum();
+    Enl += 0.5
+               * (contactStiffness
+                  * (massesInterpenetrations(0) * massesInterpenetrations(0)
+                     + massesInterpenetrations(1) * massesInterpenetrations(1)))
+           + contactStiffness * etaContactStiffness
+                 * (pow(massesInterpenetrations(0), alphaContactStiffness + 1)
+                    + pow(massesInterpenetrations(1),
+                          alphaContactStiffness + 1))
+                 / (alphaContactStiffness + 1);  // Contact
+
+    epsilonSav = r(idxNow) - sqrt(2 * Enl);
+    gSav += -lambdaSav * epsilonSav * dt
+            * (p(idxNow, Eigen::all).array() > 0)
+                  .select(Eigen::Vector<ftype, -1>::Ones(3),
+                          -Eigen::Vector<ftype, -1>::Ones(3))
+            / (p(idxNow, Eigen::all).template lpNorm<1>() + 1e-14);
+  }
 }
 
 template <typename ftype>
@@ -161,6 +193,7 @@ void Larynx<ftype>::process(float Pin) {
   // Step 3: get resonator feedback coefficients
   std::tie(aResonator, bResonator)
       = resonator->getInputLinearDependencyCoefficients();
+
   C0 = 1 / (Rk + 1 / bResonator)
        * (aResonator / bResonator + Rk * Psub(idxNext)
           + 0.5 * effectiveSurfacesPsup.transpose() * massMatrixInv

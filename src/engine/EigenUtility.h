@@ -37,6 +37,14 @@ auto softplusMatrix(const Eigen::MatrixBase<derived>& x, ftype epsilon = 1,
       .select(x, (x / epsilon).array().exp().log1p().matrix() * epsilon);
 }
 
+template <typename derived, typename ftype>
+auto softplusDerivativeMatrix(const Eigen::MatrixBase<derived>& x,
+                              ftype epsilon = 1, ftype threshold = 40) {
+  return ((x / epsilon).array() > threshold)
+      .select(Eigen::ArrayX<ftype>::Ones(x.rows(), x.cols()),
+              (x / epsilon).array().exp() / (1 + (x / epsilon).array().exp()));
+}
+
 template <typename Derived, typename ftype>
 auto ClipEigen(Eigen::Ref<const Eigen::ArrayX<Derived>> array, const ftype& min,
                const ftype& max) {

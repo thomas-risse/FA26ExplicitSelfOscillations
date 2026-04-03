@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.io.wavfile import write
 
 import h5py
 import subprocess
@@ -13,21 +14,22 @@ from helper_plots import set_size
 
 # Input sub-glottal pressure ramp
 PsubMax = 800  # Pa
-trise = 0.001  # s
+trise = 0.05  # s
 
 # Numerical setting
 duration = 0.1  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
-Nsrs = 8
+Nsrs = 7
 idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
-tmin, tmax = 0.00, 0.1
+tmin, tmax = 0., 0.1
 
 # Directories
 result_folder = "results"  # Simulation results
 figure_folder = "figures"  # Figure export
+fig_width = 'FA'  # In inches, or "FA" for linewidth of Forum Acusticum template
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Functions
@@ -35,6 +37,7 @@ figure_folder = "figures"  # Figure export
 
 
 def inputPressure(t):
+    # return PsubMax  # * (1 + np.sin(2 * np.pi * 1 * t) * 0.5) + 600
     return PsubMax * (t >= trise) + PsubMax * (t < trise) * t / trise
 
 
@@ -72,6 +75,8 @@ def run_simulation(sr: int, duration: float, fname: str) -> dict:
             "PdissFlow":       f["PdissFlow"][:],
             "PdissFolds":      f["PdissFolds"][:],
             "Pstored":         f["Pstored"][:],
+            "radiatedPressure": f["radiatedPressure"][:],
+            "epsilonSav": f["epsilonSav"][:]
         }
 
 
@@ -134,7 +139,7 @@ for i, sr in enumerate(sample_rates[:-1]):
 # ──────────────────────────────────────────────────────────────────────────────
 
 fig_conv, ax_conv = plt.subplots(
-    figsize=set_size(width='FA', height_ratio=1))
+    figsize=set_size(width=fig_width, height_ratio=1))
 
 ax_conv.loglog(sample_rates[:-1], l2_errors, "o-")
 
@@ -151,7 +156,7 @@ ax_conv.legend(frameon=True)
 ax_conv.grid(which="both", ls=":")
 plt.tight_layout()
 fig_conv.savefig(
-    path.join(figure_folder, "Voice_convergence.pdf"),
+    path.join(figure_folder, "Voice_convergence.png"),
     bbox_inches="tight",
 )
 print("Convergence plot saved.")
@@ -174,12 +179,17 @@ Pdiss = res_plot["Pdiss"]
 PdissFlow = res_plot["PdissFlow"]
 PdissFolds = res_plot["PdissFolds"]
 Pstored = res_plot["Pstored"]
+radiatedPressure = res_plot["radiatedPressure"][::int(sr / sr0)]
+epsilonSav = res_plot["epsilonSav"]
+
+write(path.join(result_folder, "voice.wav"), sr0,
+      radiatedPressure / np.max(np.abs(radiatedPressure)))
 
 idxmin = int(tmin * sr)
 idxmax = int(tmax * sr)
 
 # Powers
-fig = plt.figure(figsize=set_size(width='FA', height_ratio=0.7))
+fig = plt.figure(figsize=set_size(width=fig_width, height_ratio=0.7))
 
 plt.plot(time[idxmin:idxmax], Pstored[idxmin:idxmax], label="Stored")
 plt.plot(time[idxmin:idxmax], Pext[idxmin:idxmax],    label="External")
@@ -192,7 +202,7 @@ plt.legend(frameon=True, loc=1)
 plt.grid()
 plt.tight_layout()
 fig.savefig(
-    path.join(figure_folder, "Voice_powers.pdf"),
+    path.join(figure_folder, "Voice_powers.png"),
     bbox_inches="tight",
 )
 print("\n")
@@ -201,7 +211,7 @@ print(f"Power balance mean relative error for fs={sr}:", "{0:0.2E}".format(l2_no
 
 # Masses displacements and glottal flow
 fig2, axs = plt.subplots(
-    figsize=set_size(width='FA', height_ratio=0.5, subplots=(2, 1)),
+    figsize=set_size(width=fig_width, height_ratio=0.5, subplots=(2, 1)),
     nrows=2, ncols=1, sharex=True, height_ratios=[1, 0.5],
 )
 
@@ -213,7 +223,7 @@ axs[0].plot(time[idxmin:idxmax],
 axs[0].plot(time[idxmin:idxmax],
             (restPositions[2] - q[idxmin:idxmax, 2]) * 1000, label="Body",  ls=":")
 axlims = axs[0].get_ylim()
-axs[0].axhspan(-1, 0, alpha=0.3, color="grey")
+axs[0].axhspan(-10, 0, alpha=0.3, color="grey")
 axs[0].set_ylim(axlims)
 
 axs[1].plot(time, supGlottalFlow, color="red")
@@ -231,8 +241,12 @@ for ax in axs:
 plt.tight_layout()
 fig2.subplots_adjust(hspace=0.25)
 fig2.savefig(
-    path.join(figure_folder, "Voice_displacement.pdf"),
+    path.join(figure_folder, "Voice_displacement.png"),
     bbox_inches="tight",
 )
+
+
+plt.figure()
+plt.plot(time, epsilonSav)
 
 plt.show()

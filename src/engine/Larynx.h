@@ -28,10 +28,10 @@ class Larynx {
       5, 3.5, 20, 0.5};  // lower, upper, body, lower-upper
   ftype etaStiffness{1e6};
 
-  ftype xi{0.2};
+  ftype xi{0.4};
   Eigen::DiagonalMatrix<ftype, 4> dissipationCoefficients;
 
-  ftype contactStiffness{15}, etaContactStiffness{5e6},
+  ftype contactStiffness{15}, etaContactStiffness{1e6},
       alphaContactStiffness{3};
 
   ftype rho_0{1.2}, c_0{340}, kt{1};
@@ -45,7 +45,9 @@ class Larynx {
   Eigen::Vector<ftype, 3> effectiveSurfacesPsub, effectiveSurfacesPsup;
 
   Eigen::Vector<ftype, 3> gSav{0, 0, 0}, Fnl{0, 0, 0};
-  ftype Enl;
+  ftype Enl, epsilonSav;
+  bool controlTerm{true};
+  ftype lambdaSav{1000};
 
   ftype Aratio, Amin;
   ftype meanFlow, Rk;
@@ -109,6 +111,8 @@ class Larynx {
   inline ftype getRadiatedPressure() {
     return resonator->getRadiatedPressure();
   }
+
+  inline ftype getEpsilonSav() { return epsilonSav; }
 
   // Power variables
   std::tuple<ftype, ftype, ftype> getCurrentDissipatedPowers() {

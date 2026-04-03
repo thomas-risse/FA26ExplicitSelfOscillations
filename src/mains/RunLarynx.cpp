@@ -29,12 +29,12 @@ int main(int argc, char const* argv[]) {
   storage.readAttribute("duration", simDuration);
 
   // Model instanciation
-  Larynx<double> proc(sr);
+  Larynx<double> proc(sr, true);
   proc.getResonator()->setLength(17e-2);
   proc.getResonator()->setConstantSection(25e-4);
-  Articulation art;
-  art.setFromVowel(vowels::o);
-  proc.getResonator()->setSTargetFromArticulation(art);
+  //   Articulation art;
+  //   art.setFromVowel(vowels::U);
+  //   proc.getResonator()->setSTargetFromArticulation(art);
   // Run a simulation
   Eigen::VectorXd Pmouth
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
@@ -53,6 +53,9 @@ int main(int argc, char const* argv[]) {
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
 
   Eigen::VectorXd radiatedPressure
+      = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
+
+  Eigen::VectorXd epsilonSav
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
 
   Eigen::VectorXd PextSub
@@ -94,6 +97,8 @@ int main(int argc, char const* argv[]) {
     pressureDrop(i) = proc.getCurrentPressureDrop();
     effectiveOpening.row(i) = proc.getCurrentEffectiveOpening();
 
+    epsilonSav(i) = proc.getEpsilonSav();
+
     std::tie(Pext(i), PextSub(i), PextSup(i))
         = proc.getCurrentExchangedPowers();
     std::tie(Pdiss(i), PdissFlow(i), PdissFolds(i))
@@ -119,6 +124,8 @@ int main(int argc, char const* argv[]) {
   storage.writeVector("meanGlottalFlow", meanGlottalFlow);
   storage.writeVector("pressureDrop", pressureDrop);
   storage.writeVector("radiatedPressure", radiatedPressure);
+
+  storage.writeVector("epsilonSav", epsilonSav);
 
   storage.writeVector("Pext", Pext);
   storage.writeVector("PextSub", PextSub);

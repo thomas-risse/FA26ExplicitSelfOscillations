@@ -43,3 +43,16 @@ The power balance, viewed from the mouthpiece components looks like is nonethele
 
 ### Voice
 
+For the voice simulation, the body-cover model of the vocal folds is used. Using a configuration similar to configuration B of the original Story's paper, the following results are obtained:
+
+<img src="medias/Voice_displacement_configB.png" alt="drawing"/>
+
+The power balance is still conserved up to machine precision:
+
+<img src="medias/Voice_powers_configB.png" alt="drawing"/>
+
+The scheme converges at first order:
+
+<img src="medias/Voice_convergence_configB.png" alt="drawing"/>
+
+For these simulations, the SAV control term from [Risse et al, 2025](https://dafx25.dii.univpm.it/wp-content/uploads/2025/09/DAFx25_paper_24.pdf) is used. Indeed, and contrary to what was initially expected, the nonlinearities in the vocal fold model (cubic laws on the springs + "light" contact laws) generate auxiliary variable drift, even when the contact stiffness is deactivated, and only the symmetric cubic term remains. 
