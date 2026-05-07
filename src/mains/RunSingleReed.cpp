@@ -48,6 +48,8 @@ int main(int argc, char const* argv[]) {
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
   Eigen::VectorXd pressureDrop
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
+  Eigen::VectorXd auxiliaryVariable
+      = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
 
   Eigen::VectorXd radiatedPressure
       = Eigen::VectorXd::Zero(static_cast<int>(sr * simDuration));
@@ -90,6 +92,7 @@ int main(int argc, char const* argv[]) {
     resonatorFlow(i) = proc.getCurrentResonatorFlow();
     effectiveOpening(i) = proc.getCurrentEffectiveOpening();
     pressureDrop(i) = proc.getCurrentPressureDrop();
+    auxiliaryVariable(i) = proc.getAuxiliaryVariable();
 
     std::tie(Pext(i), PextSub(i), PextSup(i))
         = proc.getCurrentExchangedPowers();
@@ -116,6 +119,7 @@ int main(int argc, char const* argv[]) {
   storage.writeVector("resonatorFlow", resonatorFlow);
   storage.writeVector("pressureDrop", pressureDrop);
   storage.writeVector("radiatedPressure", radiatedPressure);
+  storage.writeVector("auxiliaryVariable", auxiliaryVariable);
 
   storage.writeVector("Pext", Pext);
   storage.writeVector("PextSub", PextSub);

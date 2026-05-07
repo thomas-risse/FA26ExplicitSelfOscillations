@@ -26,9 +26,17 @@ void SingleReed<ftype>::fillOpeningAndInterpenetration() {
   interpenetration = q(idxNext) - layPosition;
 
   opening = width * softplus(-interpenetration, epsilonSmooth);
-  interpenetration = softplus(interpenetration, epsilonSmooth);
-  interpenetrationDerivative
-      = softplusDerivative(interpenetration, epsilonSmooth);
+  // Interpenetration left unsmoothed
+  // interpenetration = softplus(interpenetration, epsilonSmooth);
+  // interpenetrationDerivative = softplusDerivative(interpenetration,
+  // epsilonSmooth);
+
+  if (interpenetration >= 0) {
+    interpenetrationDerivative = 1;
+  } else {
+    interpenetration = 0;
+    interpenetrationDerivative = 0;
+  }
 }
 
 template <typename ftype>
@@ -47,13 +55,56 @@ void SingleReed<ftype>::computeRk() {
 
 template <typename ftype>
 void SingleReed<ftype>::computegSAV() {
-  Enl = contactStiffness * pow(interpenetration, alphaContactStiffness + 1)
-        / (alphaContactStiffness + 1);
+  // Modified SAV evaluation for contact: EXP-2 from
+  // Implicit and explicit schemes for energy-stable simulation of string
+  // vibrations with collisions: Refinement, analysis, and comparison. 2024 van
+  // Walstijn et al.
 
-  Fnl = contactStiffness * pow(interpenetration, alphaContactStiffness)
-        * interpenetrationDerivative;
+  // Enl = contactStiffness * pow(interpenetration, alphaContactStiffness + 1)
+  //       / (alphaContactStiffness + 1);
 
-  gSav = Fnl / (sqrt(2 * Enl) + 1e-14);
+  // Fnl = contactStiffness * pow(interpenetration, alphaContactStiffness)
+  //       * interpenetrationDerivative;
+
+  // gSav = Fnl / (sqrt(2 * Enl) + 1e-14);
+
+  if (interpenetration > 0) {
+    Enl = contactStiffness * pow(interpenetration, alphaContactStiffness + 1)
+          / (alphaContactStiffness + 1);
+
+    Fnl = contactStiffness * pow(interpenetration, alphaContactStiffness)
+          * interpenetrationDerivative;
+
+    gSav = std::copysign(1, r(idxNow)) * Fnl / (sqrt(2 * Enl) + 1e-14);
+    if (gSav * (r(idxNow) + gSav * (qinter - q(idxNow)) / 4) < 0) {
+      RHS = -stiffness * q(idxNext)
+            + (1 / dt - dissipationCoefficient / (2 * mass)) * p(idxNow)
+            + surface * (Psub(idxNext) - C0);
+
+      pinter
+          = RHS / (1 / dt + dissipationCoefficient / (2 * mass) + surface * C1);
+      qinter = q(idxNext) + dt / mass * pinter;
+      gSav = -2 * r(idxNow)
+             / (qinter - q(idxNow)
+                + +std::copysign(
+                    1e-12,
+                    qinter - q(idxNow)));  // q(idxNow) two steps before qinter
+      // gSav = 0;
+    }
+  } else {
+    RHS = -stiffness * q(idxNext)
+          + (1 / dt - dissipationCoefficient / (2 * mass)) * p(idxNow)
+          + surface * (Psub(idxNext) - C0);
+
+    pinter
+        = RHS / (1 / dt + dissipationCoefficient / (2 * mass) + surface * C1);
+    qinter = q(idxNext) + dt / mass * pinter;
+    gSav = -2 * r(idxNow)
+           / (qinter - q(idxNow)
+              + std::copysign(
+                  1e-12,
+                  qinter - q(idxNow)));  // q(idxNow) two steps before qinter
+  }
 }
 
 template <typename ftype>
@@ -79,18 +130,18 @@ void SingleReed<ftype>::process(float Pin) {
   // Step 1: q update
   q(idxNext) = q(idxNow) + dt / mass * p(idxNow);
 
-  // Step 2: Rk and gSav explicit computation
+  // Step 2 and 3: Rk and gSav explicit computation, resonator feedbac
+  // coefficients
   fillOpeningAndInterpenetration();
   computeRk();
-  computegSAV();
-
-  // Step 3: get resonator feedback coefficients
   std::tie(aResonator, bResonator)
       = resonator->getInputLinearDependencyCoefficients();
   C0 = 1 / (Rk + 1 / bResonator)
        * (aResonator / bResonator + Rk * Psub(idxNext)
           + 0.5 * surface / mass * p(idxNow));
   C1 = 1 / (Rk + 1 / bResonator) * 0.5 / mass * surface;
+
+  computegSAV();
 
   // Step 4: solve for pnext
   RHS = -stiffness * q(idxNext)

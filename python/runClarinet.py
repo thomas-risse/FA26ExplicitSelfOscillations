@@ -13,18 +13,21 @@ from helper_plots import set_size
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Input mouth pressure ramp
-PsubMax = 2000  # Pa
+PsubMax = 2500  # Pa
 trise = 0.01  # s
 
 # Numerical setting
-duration = 0.1  # s
+duration = 0.5  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
 Nsrs = 6
-idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
+idx_plot = 5  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
-tmin, tmax = 0., 0.1
+tmin, tmax = 0.48, 0.5
+
+if (tmax > duration):
+    duration = tmax
 
 # Directories
 result_folder = "results"  # Simulation results
@@ -122,16 +125,12 @@ for i, sr in enumerate(sample_rates[:-1]):
     # Restrict to the analysis window on the reference grid
     idxmin_ref = int(tmin * sr0)
     idxmax_ref = int(tmax * sr0)
-    idxmin_cur = int(tmin * sr)
-    idxmax_cur = int(tmax * sr)
 
-    q_cur_window = res["q"][idxmin_cur:idxmax_cur]
+    q_cur_resampled = res["q"][::int(sr / sr0)]
+    q_cur_window = q_cur_resampled[idxmin_ref:idxmax_ref]
     q_ref_window = q_ref[idxmin_ref:idxmax_ref]
 
-    # Interpolate current solution onto the reference grid (within window)
-    q_cur_resampled = q_cur_window[::int(sr/sr0)]
-
-    diff = q_cur_resampled - q_ref_window
+    diff = q_cur_window - q_ref_window
     l2_errors.append(l2_norm(diff) / l2_norm(q_ref_window))
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -40,6 +40,7 @@ class SingleReed {
 
   // State
   Eigen::Vector<ftype, 2> p, q, r;
+  ftype pinter, qinter;
   std::size_t idxNow{0}, idxNext{1};
 
   Eigen::Vector<ftype, 2> Psub, PsubCentered;
@@ -84,6 +85,7 @@ class SingleReed {
 
   inline ftype getLayPosition() { return layPosition; };
 
+  inline ftype getAuxiliaryVariable() { return r(idxNow); };
   // Power variables
   std::tuple<ftype, ftype, ftype> getCurrentDissipatedPowers() {
     return {Pdiss, PdissFlow, PdissReed};
