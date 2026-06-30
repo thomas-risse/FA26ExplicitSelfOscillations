@@ -17,14 +17,14 @@ PsubMax = 800  # Pa
 trise = 0.05  # s
 
 # Numerical setting
-duration = 0.1  # s
+duration = 2  # s
 sr0 = 44100  # Hz, base samplerate
 # Number of higher samplerates for convergence. The max samplerate is sr0 * 2^{Nsrs}
-Nsrs = 7
+Nsrs = 6
 idx_plot = 0  # Index of the samplerate for wich the displacement and flow figures are exported. 0 for sr0, Nsrs-1 for reference
 
 # Time interval for plotting and error computation
-tmin, tmax = 0., 0.1
+tmin, tmax = 0., 2
 
 # Directories
 result_folder = "results"  # Simulation results
@@ -56,8 +56,8 @@ def run_simulation(sr: int, duration: float, fname: str) -> dict:
     subprocess.run(
         ["../build/RunLarynx", f"{path.realpath(fname)}"],
         check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
 
     with h5py.File(fname, "r") as f:

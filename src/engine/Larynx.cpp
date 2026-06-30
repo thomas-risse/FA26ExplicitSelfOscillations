@@ -44,19 +44,22 @@ Larynx<ftype>::Larynx(float samplerate, bool yieldingWalls) {
 
 template <typename ftype>
 void Larynx<ftype>::fillMassesInterpenetrationsAndAreas() {
-  massesInterpenetrations = q(idxNext, Eigen::all).transpose() - restPositions;
+  massesInterpenetrations
+      = (q(idxNext, Eigen::placeholders::all).transpose() - restPositions) * 2;
 
   areasBelowMasses = widths.cwiseProduct(
-      softplusMatrix(-massesInterpenetrations,
-                     epsilonSmooth));  // 2 Comes from symmetric configuration
+      softplusMatrix(-massesInterpenetrations, epsilonSmooth));
   smoothedIsOpened
       = (-(massesInterpenetrations / epsilonSmooth).array().tanh().matrix()
          + Eigen::Vector<ftype, 3>::Ones())
         / 2;
-  massesInterpenetrationsDerivatives
-      = softplusDerivativeMatrix(massesInterpenetrations, epsilonSmooth);
   massesInterpenetrations
-      = softplusMatrix(massesInterpenetrations, epsilonSmooth);
+      = (massesInterpenetrations.array() > 0)
+            .select(massesInterpenetrations, Eigen::Vector<ftype, 3>::Zero());
+  // massesInterpenetrationsDerivatives
+  //     = 2 * softplusDerivativeMatrix(massesInterpenetrations, epsilonSmooth);
+  // massesInterpenetrations
+  //     = softplusMatrix(massesInterpenetrations, epsilonSmooth);
 }
 
 template <typename ftype>
@@ -87,20 +90,17 @@ void Larynx<ftype>::computeRk() {
 
 template <typename ftype>
 void Larynx<ftype>::computegSAV() {
-  elongations = elongationMatrix * q(idxNext, Eigen::all).transpose();
+  elongations
+      = elongationMatrix * q(idxNext, Eigen::placeholders::all).transpose();
 
   Enl = 0.25 * etaStiffness
         * (stiffnesses.diagonal().array() * elongations.array()
            * elongations.array() * elongations.array() * elongations.array())
               .sum();
-  Enl += 0.5
-             * (contactStiffness
-                * (massesInterpenetrations(0) * massesInterpenetrations(0)
-                   + massesInterpenetrations(1) * massesInterpenetrations(1)))
-         + contactStiffness * etaContactStiffness
-               * (pow(massesInterpenetrations(0), alphaContactStiffness + 1)
-                  + pow(massesInterpenetrations(1), alphaContactStiffness + 1))
-               / (alphaContactStiffness + 1);  // Contact
+  Enl += contactStiffness
+         * (pow(massesInterpenetrations(0), alphaContactStiffness + 1)
+            + pow(massesInterpenetrations(1), alphaContactStiffness + 1))
+         / (alphaContactStiffness + 1);  // Contact
 
   // Fnl should be modified to include the derivative of the smoothing function
   // here
@@ -109,61 +109,76 @@ void Larynx<ftype>::computegSAV() {
            * elongations.array() * elongations.array())
               .matrix();
   Fnl(0) += contactStiffness
-            * (etaContactStiffness
-                   * pow(massesInterpenetrations(0), alphaContactStiffness)
-               + massesInterpenetrations(0))
-            * massesInterpenetrationsDerivatives(0);
+            * (pow(massesInterpenetrations(0), alphaContactStiffness)) * 2;
+  // * massesInterpenetrationsDerivatives(0);
   Fnl(1) += contactStiffness
-            * (etaContactStiffness
-                   * pow(massesInterpenetrations(1), alphaContactStiffness)
-               + massesInterpenetrations(1))
-            * massesInterpenetrationsDerivatives(1);
+            * (pow(massesInterpenetrations(1), alphaContactStiffness)) * 2;
+  // * massesInterpenetrationsDerivatives(1);
 
   gSav = Fnl / (sqrt(2 * Enl) + 1e-14);
 
   if (controlTerm) {
-    elongations
-        = elongationMatrix * 0.5
-          * (q(idxNext, Eigen::all) + q(idxNow, Eigen::all)).transpose();
+    elongations = elongationMatrix * 0.5
+                  * (q(idxNext, Eigen::placeholders::all)
+                     + q(idxNow, Eigen::placeholders::all))
+                        .transpose();
 
-    massesInterpenetrations = softplusMatrix(
-        0.5 * (q(idxNext, Eigen::all) + q(idxNow, Eigen::all)).transpose()
-            - restPositions,
-        epsilonSmooth);
+    // massesInterpenetrations
+    //     = softplusMatrix(2
+    //                          * (0.5
+    //                                 * (q(idxNext, Eigen::placeholders::all)
+    //                                    + q(idxNow, Eigen::placeholders::all))
+    //                                       .transpose()
+    //                             - restPositions),
+    //                      epsilonSmooth);
+    massesInterpenetrations = 2
+                              * (0.5
+                                     * (q(idxNext, Eigen::placeholders::all)
+                                        + q(idxNow, Eigen::placeholders::all))
+                                           .transpose()
+                                 - restPositions);
+    massesInterpenetrations
+        = (massesInterpenetrations.array() > 0)
+              .select(massesInterpenetrations, Eigen::Vector<ftype, 3>::Zero());
 
     Enl = 0.25 * etaStiffness
           * (stiffnesses.diagonal().array() * elongations.array()
              * elongations.array() * elongations.array() * elongations.array())
                 .sum();
-    Enl += 0.5
-               * (contactStiffness
-                  * (massesInterpenetrations(0) * massesInterpenetrations(0)
-                     + massesInterpenetrations(1) * massesInterpenetrations(1)))
-           + contactStiffness * etaContactStiffness
-                 * (pow(massesInterpenetrations(0), alphaContactStiffness + 1)
-                    + pow(massesInterpenetrations(1),
-                          alphaContactStiffness + 1))
-                 / (alphaContactStiffness + 1);  // Contact
+    Enl += contactStiffness
+           * (pow(massesInterpenetrations(0), alphaContactStiffness + 1)
+              + pow(massesInterpenetrations(1),
+                    alphaContactStiffness + 1))
+           / (alphaContactStiffness + 1);  // Contact
 
     epsilonSav = r(idxNow) - sqrt(2 * Enl);
-    gSav += -lambdaSav * epsilonSav * dt
-            * (p(idxNow, Eigen::all).array() > 0)
-                  .select(Eigen::Vector<ftype, -1>::Ones(3),
-                          -Eigen::Vector<ftype, -1>::Ones(3))
-            / (p(idxNow, Eigen::all).template lpNorm<1>() + 1e-14);
+    gSav
+        = gSav
+          - (lambdaSav * epsilonSav
+             * (p(idxNow, Eigen::placeholders::all).array() > 0)
+                   .select(Eigen::Array<ftype, 1, 3>::Ones(),
+                           -Eigen::Array<ftype, 1, 3>::Ones())
+             / ((massMatrixInv.diagonal() * p(idxNow, Eigen::placeholders::all))
+                    .template lpNorm<1>()
+                + 1e-14))
+                .matrix()
+                .transpose();
   }
 }
 
 template <typename ftype>
 void Larynx<ftype>::process(float Pin) {
   // Optional computations needed for power balance variables
-  subGlottalFlow
-      = -Rk * (Psub(idxNext) - Psup)
-        + 0.5 * effectiveSurfacesPsub.transpose() * massMatrixInv
-              * (p(idxNow, Eigen::all) + p(idxNext, Eigen::all)).transpose();
+  subGlottalFlow = -Rk * (Psub(idxNext) - Psup)
+                   + 0.5 * effectiveSurfacesPsub.transpose() * massMatrixInv
+                         * (p(idxNow, Eigen::placeholders::all)
+                            + p(idxNext, Eigen::placeholders::all))
+                               .transpose();
   PdissFlow = Rk * pow(Psub(idxNext) - Psup, 2);
-  auto pmid
-      = 0.5 * (p(idxNow, Eigen::all) + p(idxNext, Eigen::all)).transpose();
+  auto pmid = 0.5
+              * (p(idxNow, Eigen::placeholders::all)
+                 + p(idxNext, Eigen::placeholders::all))
+                    .transpose();
   PdissFolds = pmid.transpose() * massMatrixInv * dissipationMatrix
                * massMatrixInv * pmid;
   Pdiss = PdissFlow + PdissFolds;
@@ -180,9 +195,9 @@ void Larynx<ftype>::process(float Pin) {
   Psub(idxNext)
       = (PsubCentered(idxNext) + PsubCentered(idxNow)) * 0.5;  // P^{n+1/2}
   // Step 1: q update
-  q(idxNext, Eigen::all)
-      = q(idxNow, Eigen::all).transpose()
-        + dt * massMatrixInv * p(idxNow, Eigen::all).transpose();
+  q(idxNext, Eigen::placeholders::all)
+      = q(idxNow, Eigen::placeholders::all).transpose()
+        + dt * massMatrixInv * p(idxNow, Eigen::placeholders::all).transpose();
 
   // Step 2: Rk and gSav explicit computation
   fillMassesInterpenetrationsAndAreas();
@@ -197,17 +212,17 @@ void Larynx<ftype>::process(float Pin) {
   C0 = 1 / (Rk + 1 / bResonator)
        * (aResonator / bResonator + Rk * Psub(idxNext)
           + 0.5 * effectiveSurfacesPsup.transpose() * massMatrixInv
-                * p(idxNow, Eigen::all).transpose());
+                * p(idxNow, Eigen::placeholders::all).transpose());
   C1 = 1 / (Rk + 1 / bResonator) * 0.5 * massMatrixInv * effectiveSurfacesPsup;
 
   // // Step 4: solve for pnext using Woodburry
-  RHS = -stiffnessMatrix * q(idxNext, Eigen::all).transpose()
+  RHS = -stiffnessMatrix * q(idxNext, Eigen::placeholders::all).transpose()
         + (1 / dt * Eigen::Matrix<ftype, 3, 3>::Identity()
            - dissipationMatrix * massMatrixInv)
-              * p(idxNow, Eigen::all).transpose()
+              * p(idxNow, Eigen::placeholders::all).transpose()
         - dt / 4 * gSav
               * (gSav.transpose() * massMatrixInv
-                 * p(idxNow, Eigen::all).transpose())
+                 * p(idxNow, Eigen::placeholders::all).transpose())
         - gSav * r[idxNow] - effectiveSurfacesPsub * Psub(idxNext)
         - effectiveSurfacesPsup * C0;
 
@@ -220,33 +235,38 @@ void Larynx<ftype>::process(float Pin) {
                       + VWoodburry * A0_inv * UWoodburry)
                          .inverse();
 
-  p(idxNext, Eigen::all)
+  p(idxNext, Eigen::placeholders::all)
       = A0_inv * RHS
         - A0_inv * A0_inv * UWoodburry * woodburryInverse * (VWoodburry * RHS);
 
   // Step 5: r update
-  r(idxNext)
-      = r(idxNow)
-        + 0.5 * dt * gSav.transpose() * massMatrixInv
-              * (p(idxNow, Eigen::all) + p(idxNext, Eigen::all)).transpose();
+  r(idxNext) = r(idxNow)
+               + 0.5 * dt * gSav.transpose() * massMatrixInv
+                     * (p(idxNow, Eigen::placeholders::all)
+                        + p(idxNext, Eigen::placeholders::all))
+                           .transpose();
 
   // Step 6: Resonator update
-  Psup = C0 + C1.transpose() * p(idxNext, Eigen::all).transpose();
+  Psup = C0 + C1.transpose() * p(idxNext, Eigen::placeholders::all).transpose();
   supGlottalFlow = (Psup - aResonator) / bResonator;
   // supGlottalFlow
   //     = Rk * (Psub(idxNext) - Psup)
   //       + 0.5 * effectiveSurfacesPsup.transpose() * massMatrixInv
-  //             * (p(idxNow, Eigen::all) + p(idxNext, Eigen::all)).transpose();
+  //             * (p(idxNow, Eigen::placeholders::all) + p(idxNext,
+  //             Eigen::placeholders::all)).transpose();
   resonator->process(supGlottalFlow);
 
   // Optional computations needed for power balance variables
-  auto qmid
-      = 0.5 * (q(idxNow, Eigen::all) + q(idxNext, Eigen::all)).transpose();
-  kineticEnergy(idxNext) = 0.5 * p(idxNow, Eigen::all)
+  auto qmid = 0.5
+              * (q(idxNow, Eigen::placeholders::all)
+                 + q(idxNext, Eigen::placeholders::all))
+                    .transpose();
+  kineticEnergy(idxNext) = 0.5 * p(idxNow, Eigen::placeholders::all)
                            * (Eigen::Matrix<ftype, 3, 3>::Identity()
                               - dt * dt / 4 * massMatrixInv * stiffnessMatrix
                               - dt / 2 * massMatrixInv * dissipationMatrix)
-                           * massMatrixInv * p(idxNow, Eigen::all).transpose();
+                           * massMatrixInv
+                           * p(idxNow, Eigen::placeholders::all).transpose();
   potentialEnergy(idxNext) = 0.5 * qmid.transpose() * stiffnessMatrix * qmid
                              + 0.5 * r(idxNow) * r(idxNow);
 

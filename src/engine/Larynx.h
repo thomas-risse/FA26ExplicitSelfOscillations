@@ -31,8 +31,8 @@ class Larynx {
   ftype xi{0.4};
   Eigen::DiagonalMatrix<ftype, 4> dissipationCoefficients;
 
-  ftype contactStiffness{15}, etaContactStiffness{1e6},
-      alphaContactStiffness{3};
+  ftype contactStiffness{150}, etaContactStiffness{0e6},
+      alphaContactStiffness{1.3};
 
   ftype rho_0{1.2}, c_0{340}, kt{1};
 
@@ -98,7 +98,9 @@ class Larynx {
 
   inline Eigen::Vector<ftype, 3> getCurrentFoldDisplacement() {
     // Midpoint to evaluate on the same grid as inputs and momentums.
-    return (q(idxNow, Eigen::all) + q(idxNext, Eigen::all)) * 0.5;
+    return (q(idxNow, Eigen::placeholders::all)
+            + q(idxNext, Eigen::placeholders::all))
+           * 0.5;
   };
 
   inline Eigen::Vector<ftype, 3> getCurrentEffectiveOpening() {
